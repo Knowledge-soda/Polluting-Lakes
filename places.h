@@ -2,11 +2,14 @@
 #define PLACES_INCLUDED
 
 #include"misc.h"
+#include"random.h"
 
 typedef struct place {
     SDL_Rect rect;
     int x, y;
+    int type;
     struct place *right, *down, *r_diag, *l_diag;
+    int flag_r, flag_d, flag_rd, flag_ld;
 } Place;
 
 typedef struct places {
@@ -14,7 +17,7 @@ typedef struct places {
     Place *places;
 } Places;
 
-int init_places(Places *places, int w, int h, int screen_w, int screen_h);
+int init_places(Places *places, int w, int h, int screen_w, int screen_h, RandomSeed *seed);
 int blit_places(Places *places, SDL_Renderer *render);
 
 #endif

@@ -16,8 +16,11 @@ int init(Game *game){
                                         SDL_RENDERER_ACCELERATED);
     SDL_GetWindowSize(game -> window, &(game -> screen_w), &(game -> screen_h));
 
+    game -> seed = malloc(sizeof(RandomSeed));
+    init_random(game -> seed);
+
     game -> places = malloc(sizeof(Places) * 25);
-    init_places(game -> places, 14, 10, game -> screen_w, game -> screen_h);
+    init_places(game -> places, 14, 10, game -> screen_w, game -> screen_h, game -> seed);
 
     return 0;
 }

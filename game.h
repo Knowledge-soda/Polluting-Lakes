@@ -7,6 +7,7 @@
 #include"misc.h"
 #include"parts.h"
 #include"places.h"
+#include"random.h"
 
 typedef struct game {
     SDL_Window *window;
@@ -15,6 +16,7 @@ typedef struct game {
     SDL_Renderer *render;
     Places *places;
     int screen_w, screen_h;
+    RandomSeed *seed;
 } Game;
 
 #endif
