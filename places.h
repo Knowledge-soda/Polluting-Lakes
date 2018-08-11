@@ -9,7 +9,7 @@ typedef struct place {
     int x, y;
     int type;
     struct place *right, *down, *r_diag, *l_diag;
-    int flag_r, flag_d, flag_rd, flag_ld;
+    char flag[4];
 } Place;
 
 typedef struct places {
