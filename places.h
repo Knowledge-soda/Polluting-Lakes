@@ -10,6 +10,8 @@ typedef struct place {
     int type;
     struct place *right, *down, *r_diag, *l_diag;
     char flag[4];
+    char path[8];
+    char polluted;
 } Place;
 
 typedef struct places {

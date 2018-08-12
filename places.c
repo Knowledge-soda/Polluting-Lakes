@@ -29,8 +29,70 @@ static int is_possible(Place *map, char *visited, int w, int h, int x, int y, in
     return !(map[(y + dy) * w + x + dx].flag[rnd - 4]); 
 }
 
+static int diff_dir(int dx, int dy){
+    dx++;
+    dy++;
+    int ret = dy * 3 + dx;
+    if (ret > 4) return ret - 1;
+    return ret;
+}
+
+static void dir_diff(int dir, int *dx, int *dy){
+    if (dir == -1){
+        (*dx) = -2;
+        (*dy) = -1;
+        return;
+    }
+    if (dir > 4) dir++;
+    (*dx) = dir % 3;
+    (*dy) = dir / 3;
+    (*dx)--;
+    (*dy)--;
+}
+
 static int connect(Places *places, int x1, int y1, int x2, int y2, RandomSeed *seed){
-    /*
+    int w = places -> w;
+    Place *map;
+    map = places -> places;
+    int dx = -2, dy = -1, oldir;
+
+    while (x1 != x2 || y1 != y2){
+        oldir = diff_dir(dx, dy);
+        dy = 0;
+        dx = 0;
+        if (x2 - x1 > 0) dx = random_below(seed, 2);
+        if (x2 - x1 < 0) dx = -random_below(seed, 2);
+        if (y2 - y1 > 0) dy = random_below(seed, 2);
+        if (y2 - y1 < 0) dy = -random_below(seed, 2);
+        if (!dx && !dy){
+            dir_diff(oldir, &dx, &dy);
+            continue;
+        }
+        if (dy == 1){
+            if (dx == 1) map[y1 * w + x1].flag[1] = 1;
+            if (dx == 0) map[y1 * w + x1].flag[2] = 1;
+            if (dx == -1) map[y1 * w + x1].flag[3] = 1;
+        } else if (!dy && dx == 1){
+            map[y1 * w + x1].flag[0] = 1;
+        }
+
+        if (oldir >= 0) map[y1 * w + x1].path[oldir] = diff_dir(dx, dy);
+
+        x1 += dx;
+        y1 += dy;
+        if (dy == -1){
+            if (dx == 1) map[y1 * w + x1].flag[3] = 1;
+            if (dx == 0) map[y1 * w + x1].flag[2] = 1;
+            if (dx == -1) map[y1 * w + x1].flag[1] = 1;
+        } else if (!dy && dx == -1){
+            map[y1 * w + x1].flag[0] = 1;
+        }
+    }
+    return 0;
+}
+
+
+    /* old connect
     int w = places -> w;
     int h = places -> h;
     Place *map;
@@ -78,39 +140,6 @@ static int connect(Places *places, int x1, int y1, int x2, int y2, RandomSeed *s
     }
     return 0;
     */
-    int w = places -> w;
-    int h = places -> h;
-    Place *map;
-    map = places -> places;
-    int dx, dy;
-
-    while (x1 != x2 || y1 != y2){
-        dy = 0;
-        dx = 0;
-        if (x2 - x1 > 0) dx = random_below(seed, 2);
-        if (x2 - x1 < 0) dx = -random_below(seed, 2);
-        if (y2 - y1 > 0) dy = random_below(seed, 2);
-        if (y2 - y1 < 0) dy = -random_below(seed, 2);
-        if (!dx && !dy) continue;
-        if (dy == 1){
-            if (dx == 1) map[y1 * w + x1].flag[1] = 1;
-            if (dx == 0) map[y1 * w + x1].flag[2] = 1;
-            if (dx == -1) map[y1 * w + x1].flag[3] = 1;
-        } else if (!dy && dx == 1){
-            map[y1 * w + x1].flag[0] = 1;
-        }
-        x1 += dx;
-        y1 += dy;
-        if (dy == -1){
-            if (dx == 1) map[y1 * w + x1].flag[3] = 1;
-            if (dx == 0) map[y1 * w + x1].flag[2] = 1;
-            if (dx == -1) map[y1 * w + x1].flag[1] = 1;
-        } else if (!dy && dx == -1){
-            map[y1 * w + x1].flag[0] = 1;
-        }
-    }
-    return 0;
-}
 
 static void pick_rand_normal(Place *map, int *x, int *y, int w, int h, RandomSeed *seed){
     *x = random_below(seed, w);
@@ -132,7 +161,7 @@ static int generate(Places *places, RandomSeed *seed){
     map[s_y * w + s_x].type = TYPE_SOURCE;
 
     int i, j, x, y, x2, y2;
-    for (i = 0;i < 7;i++){
+    for (i = 0;i < 10;i++){
         x = s_x;
         y = s_y;
         for (j = 0;j < 3;j++){
@@ -146,10 +175,15 @@ static int generate(Places *places, RandomSeed *seed){
     return 0;
 }
 
+static int invalid_place(int x, int y, int screen_w, int screen_h){
+    return (x - PLACE_SIZE / 2 < 0) || (x + PLACE_SIZE / 2 > screen_w) ||
+           (y - PLACE_SIZE / 2 < 0) || (y + PLACE_SIZE / 2 > screen_h);
+}
+
 int init_places(Places *places, int w, int h, int screen_w, int screen_h, RandomSeed *seed){
     int Dx = (screen_w - CLR_EDGE * 2 - PLACE_SIZE) / (w - 1);
     int Dy = (screen_h - CLR_EDGE * 2 - PLACE_SIZE) / (h - 1);
-    int x, y;
+    int x, y, i;
     places -> w = w;
     places -> h = h;
     places -> places = malloc(sizeof(Place) * w * h);
@@ -164,6 +198,10 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
         tmp -> type = TYPE_CROSS;
         tmp -> x = CLR_EDGE + PLACE_SIZE / 2 + x * Dx + randrange(seed, -(Dx / 3), Dx / 3);
         tmp -> y = CLR_EDGE + PLACE_SIZE / 2 + y * Dy + randrange(seed, -(Dy / 3), Dy / 3);
+        while (invalid_place(tmp -> x, tmp -> y, screen_w, screen_h)){
+            tmp -> x = CLR_EDGE + PLACE_SIZE / 2 + x * Dx + randrange(seed, -(Dx / 3), Dx / 3);
+            tmp -> y = CLR_EDGE + PLACE_SIZE / 2 + y * Dy + randrange(seed, -(Dy / 3), Dy / 3);
+        }
         (tmp -> rect).x = tmp -> x - PLACE_SIZE / 2;
         (tmp -> rect).y = tmp -> y - PLACE_SIZE / 2;
         (tmp -> rect).w = PLACE_SIZE;
@@ -181,10 +219,12 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
         }
         if (x < w - 1) tmp -> right = f + (w * y) + 1 + x;
         else tmp -> right = NULL;
-        tmp -> flag[0] = 0;
-        tmp -> flag[1] = 0;
-        tmp -> flag[2] = 0;
-        tmp -> flag[3] = 0;
+        for (i = 0;i < 8;i++){
+            tmp -> flag[i] = 0;
+        }
+        for (i = 0;i < 8;i++){
+            tmp -> path[i] = -1;
+        }
     }
 
     generate(places, seed);
