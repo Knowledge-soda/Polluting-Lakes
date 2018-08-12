@@ -11,6 +11,11 @@ int loop(Game *game){
     while (run){
         while (SDL_PollEvent(&event)){
             if (event.type == SDL_QUIT) run = 0;
+            else if (event.type == SDL_MOUSEBUTTONDOWN){
+                if (event.button.button == SDL_BUTTON_LEFT){
+                    click(game -> places, event.button.x, event.button.y, game -> render);
+                }
+            }
         }
 
         SDL_SetRenderDrawColor(game -> render,

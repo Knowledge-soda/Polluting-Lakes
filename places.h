@@ -17,10 +17,13 @@ typedef struct place {
 
 typedef struct places {
     int w, h;
+    int l_click;
     Place *places;
+    char dl_sel;
 } Places;
 
 int init_places(Places *places, int w, int h, int screen_w, int screen_h, RandomSeed *seed);
+int click(Places *places, int x, int y, SDL_Renderer *render);
 int blit_places(Places *places, SDL_Renderer *render);
 
 #endif

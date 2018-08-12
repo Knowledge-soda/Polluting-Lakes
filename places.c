@@ -93,6 +93,26 @@ static void click_place(Place *map, int w, int x, int y){
     }
 }
 
+static void declick_place(Place *map, int w, int x, int y){
+    int dir, dx, dy;
+    for (dir = 0;dir < 8;dir++){
+        if (map[y * w + x].conn[dir]){
+            dir_diff(dir, &dx, &dy);
+            if (map[(y + dy) * w + x + dx].polluted == 2){
+                map[(y + dy) * w + x + dx].polluted = 0;
+            }
+        }
+    }
+}
+
+static int calc_free_dirs(Place *map, int xy){
+    int dir, ret = 0;
+    for (dir = 0;dir < 8;dir++){
+        ret += (map[xy].conn[dir]);
+    }
+    return ret;
+}
+
 static void pollute_place(Place *map, int w, int x, int y, int dir){
     map[y * w + x].polluted = 1;
     int ndir, cnt = 0, ldir;
@@ -107,8 +127,6 @@ static void pollute_place(Place *map, int w, int x, int y, int dir){
         dir_diff(ldir, &dx, &dy);
         pollute_dir(map, w, x, y, ldir);
         pollute_place(map, w, x + dx, y + dy, ldir);
-    } else {
-        click_place(map, w, x, y);
     }
 }
 
@@ -216,9 +234,45 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
             tmp -> conn[i] = 0;
         }
     }
+    places -> l_click = -1;
+    places -> dl_sel = 0;
 
     generate(places, seed);
 
+    return 0;
+}
+
+int click(Places *places, int x, int y, SDL_Renderer *render){
+    SDL_Point p;
+    p.x = x;
+    p.y = y;
+    int i, dx, dy, px, py;
+    Place *map;
+    map = places -> places;
+    int inr = 0;
+    int w = places -> w;
+    int ll_click = places -> l_click;
+    for (i = 0;i < w * (places -> h);i++){
+        if (SDL_PointInRect(&p, &map[i].brect)){
+            inr = 1;
+            if (map[places -> l_click].polluted == 1 &&
+                map[i].polluted == 2){
+                px = (places -> l_click) % w;
+                py = (places -> l_click) / w;
+                dx = i % w - px;
+                dy = i / w - py;
+                pollute_dir(map, w, px, py, diff_dir(dx, dy));
+                pollute_place(map, w, i % w, i / w, diff_dir(dx, dy));
+            } else {
+                places -> l_click = i;
+                click_place(map, w, i % w, i / w);
+            }
+        }
+    }
+    if (!inr || i == ll_click) places -> l_click = -1;
+    if (ll_click >= 0){
+        declick_place(map, w, ll_click % w, ll_click / w);
+    }
     return 0;
 }
 
