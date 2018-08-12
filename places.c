@@ -5,6 +5,7 @@
 
 #define CLR_EDGE (25)
 #define PLACE_SIZE (10)
+#define PLACE_BSIZE (20)
 
 #define TYPE_CROSS (0)
 #define TYPE_SOURCE (1)
@@ -68,24 +69,16 @@ static int connect(Places *places, int x1, int y1, int x2, int y2, RandomSeed *s
             dir_diff(oldir, &dx, &dy);
             continue;
         }
-        if (dy == 1){
-            if (dx == 1) map[y1 * w + x1].flag[1] = 1;
-            if (dx == 0) map[y1 * w + x1].flag[2] = 1;
-            if (dx == -1) map[y1 * w + x1].flag[3] = 1;
-        } else if (!dy && dx == 1){
-            map[y1 * w + x1].flag[0] = 1;
+        if (diff_dir(dx, dy) >= 4){
+            map[y1 * w + x1].flag[diff_dir(dx, dy) - 4] = 1;
         }
 
         if (oldir >= 0) map[y1 * w + x1].path[oldir] = diff_dir(dx, dy);
 
         x1 += dx;
         y1 += dy;
-        if (dy == -1){
-            if (dx == 1) map[y1 * w + x1].flag[3] = 1;
-            if (dx == 0) map[y1 * w + x1].flag[2] = 1;
-            if (dx == -1) map[y1 * w + x1].flag[1] = 1;
-        } else if (!dy && dx == -1){
-            map[y1 * w + x1].flag[0] = 1;
+        if (diff_dir(dx, dy) <= 3){
+            map[y1 * w + x1].flag[3 - diff_dir(dx, dy)] = 1;
         }
     }
     return 0;
@@ -195,6 +188,7 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
     for (y = h - 1;y >= 0;y--)
     for (x = w - 1;x >= 0;x--){
         tmp = f + (w * y) + x;
+        tmp -> polluted = 0;
         tmp -> type = TYPE_CROSS;
         tmp -> x = CLR_EDGE + PLACE_SIZE / 2 + x * Dx + randrange(seed, -(Dx / 3), Dx / 3);
         tmp -> y = CLR_EDGE + PLACE_SIZE / 2 + y * Dy + randrange(seed, -(Dy / 3), Dy / 3);
@@ -206,19 +200,23 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
         (tmp -> rect).y = tmp -> y - PLACE_SIZE / 2;
         (tmp -> rect).w = PLACE_SIZE;
         (tmp -> rect).h = PLACE_SIZE;
+        (tmp -> brect).x = tmp -> x - PLACE_BSIZE / 2;
+        (tmp -> brect).y = tmp -> y - PLACE_BSIZE / 2;
+        (tmp -> brect).w = PLACE_BSIZE;
+        (tmp -> brect).h = PLACE_BSIZE;
         if (y < h - 1){
-            tmp -> down = f + (w * y) + w + x;
-            if (x < w - 1) tmp -> r_diag = f + (w * y) + w + 1 + x;
-            else tmp -> r_diag = NULL;
-            if (x) tmp -> l_diag = f + (w * y) + w - 1 + x;
-            else tmp -> l_diag = NULL;
+            (tmp -> dir)[2] = f + (w * y) + w + x;
+            if (x < w - 1) (tmp -> dir)[3] = f + (w * y) + w + 1 + x;
+            else (tmp -> dir)[3] = NULL;
+            if (x) (tmp -> dir)[1] = f + (w * y) + w - 1 + x;
+            else (tmp -> dir)[1] = NULL;
         } else {
-            tmp -> down = NULL;
-            tmp -> r_diag = NULL;
-            tmp -> l_diag = NULL;
+            (tmp -> dir)[1] = NULL;
+            (tmp -> dir)[2] = NULL;
+            (tmp -> dir)[3] = NULL;
         }
-        if (x < w - 1) tmp -> right = f + (w * y) + 1 + x;
-        else tmp -> right = NULL;
+        if (x < w - 1) (tmp -> dir)[0] = f + (w * y) + 1 + x;
+        else (tmp -> dir)[0] = NULL;
         for (i = 0;i < 8;i++){
             tmp -> flag[i] = 0;
         }
@@ -237,32 +235,36 @@ int blit_places(Places *places, SDL_Renderer *render){
     Place *map;
     Place *cur;
     map = places -> places;
-    int x, y, w, h;
+    int w, h, i;
     w = places -> w;
     h = places -> h;
 
-    for (y = 0;y < h;y++)
-    for (x = 0;x < w;x++){
+    for (i = 0;i < w * h;i++){
         SDL_SetRenderDrawColor(render,
-                places_reds[map[y * w + x].type],
-                places_greens[map[y * w + x].type],
-                places_blues[map[y * w + x].type],
+                places_reds[map[i].type],
+                places_greens[map[i].type],
+                places_blues[map[i].type],
                 255);
-        SDL_RenderFillRect(render, &(map[y * w + x].rect));
+        SDL_RenderFillRect(render, &(map[i].rect));
+        if (map[i].polluted){
+            SDL_SetRenderDrawColor(render, 0, 0, 0, 50);
+            SDL_RenderFillRect(render, &(map[i].brect));
+        }
     }
 
-    SDL_SetRenderDrawColor(render, 0, 255, 0, 255);
-    for (y = 0;y < h;y++)
-    for (x = 0;x < w;x++){
-        cur = map + y * w + x;
-        if (cur -> right && cur -> flag[0]) SDL_RenderDrawLine(render,
-                cur -> x, cur -> y, cur -> right -> x, cur -> right -> y);
-        if (cur -> down && cur -> flag[2]) SDL_RenderDrawLine(render,
-                cur -> x, cur -> y, cur -> down -> x, cur -> down -> y);
-        if (cur -> r_diag && cur -> flag[1]) SDL_RenderDrawLine(render,
-                cur -> x, cur -> y, cur -> r_diag -> x, cur -> r_diag -> y);
-        if (cur -> l_diag && cur -> flag[3]) SDL_RenderDrawLine(render,
-                cur -> x, cur -> y, cur -> l_diag -> x, cur -> l_diag -> y);
+    int j;
+    for (i = 0;i < w * h;i++){
+        cur = map + i;
+        for (j = 0;j < 4;j++){
+            if ((cur -> dir)[j] && cur -> flag[j]){ 
+                if (cur -> flag[j] == 1)
+                     SDL_SetRenderDrawColor(render, 0, 255, 0, 255);
+                else SDL_SetRenderDrawColor(render, 0, 25, 0, 255);
+                SDL_RenderDrawLine(render, cur -> x, cur -> y,
+                                   (cur -> dir)[j] -> x,
+                                   (cur -> dir)[j] -> y);
+            }
+        }
     }
 
     return 0;

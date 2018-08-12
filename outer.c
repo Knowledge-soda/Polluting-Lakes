@@ -15,6 +15,7 @@ int init(Game *game){
     game -> render = SDL_CreateRenderer(game -> window, -1,
                                         SDL_RENDERER_ACCELERATED);
     SDL_GetWindowSize(game -> window, &(game -> screen_w), &(game -> screen_h));
+    SDL_SetRenderDrawBlendMode(game -> render, SDL_BLENDMODE_BLEND);
 
     game -> seed = malloc(sizeof(RandomSeed));
     init_random(game -> seed);

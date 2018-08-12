@@ -5,10 +5,10 @@
 #include"random.h"
 
 typedef struct place {
-    SDL_Rect rect;
+    SDL_Rect rect, brect;
     int x, y;
     int type;
-    struct place *right, *down, *r_diag, *l_diag;
+    struct place *dir[4];
     char flag[4];
     char path[8];
     char polluted;
