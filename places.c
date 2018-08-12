@@ -15,21 +15,6 @@ int places_reds[]   = {0,  0,255};
 int places_greens[] = {255,0,0};
 int places_blues[]  = {0,  0,0};
 
-static int rnd_x[] = {1, 1, 0, -1, -1, -1,  0,  1};
-static int rnd_y[] = {0, 1, 1,  1,  0, -1, -1, -1};
-
-static int is_possible(Place *map, char *visited, int w, int h, int x, int y, int rnd){
-    int dx = rnd_x[rnd];
-    int dy = rnd_y[rnd];
-    if (x + dx < 0) return 0;
-    if (y + dy < 0) return 0;
-    if (x + dx == w) return 0;
-    if (y + dy == h) return 0;
-    if (visited[(y + dy) * w + x + dx]) return 0;
-    if (rnd < 4) return !(map[y * w + x].flag[rnd]);
-    return !(map[(y + dy) * w + x + dx].flag[rnd - 4]); 
-}
-
 static int diff_dir(int dx, int dy){
     dx++;
     dy++;
@@ -44,7 +29,7 @@ static void dir_diff(int dir, int *dx, int *dy){
         (*dy) = -1;
         return;
     }
-    if (dir > 4) dir++;
+    if (dir >= 4) dir++;
     (*dx) = dir % 3;
     (*dy) = dir / 3;
     (*dx)--;
@@ -72,11 +57,13 @@ static int connect(Places *places, int x1, int y1, int x2, int y2, RandomSeed *s
         if (diff_dir(dx, dy) >= 4){
             map[y1 * w + x1].flag[diff_dir(dx, dy) - 4] = 1;
         }
+        map[y1 * w + x1].conn[diff_dir(dx, dy)] = 1;
 
         if (oldir >= 0) map[y1 * w + x1].path[oldir] = diff_dir(dx, dy);
 
         x1 += dx;
         y1 += dy;
+        map[y1 * w + x1].conn[diff_dir(-dx, -dy)] = 1;
         if (diff_dir(dx, dy) <= 3){
             map[y1 * w + x1].flag[3 - diff_dir(dx, dy)] = 1;
         }
@@ -84,55 +71,46 @@ static int connect(Places *places, int x1, int y1, int x2, int y2, RandomSeed *s
     return 0;
 }
 
+static void pollute_dir(Place *map, int w, int x, int y, int dir){
+    int dx, dy;
+    dir_diff(dir, &dx, &dy);
+    if (dir > 3){
+        map[y * w + x].flag[dir - 4] = 2;
+    } else {
+        map[(y + dy) * w + x + dx].flag[3 - dir] = 2;
+    }
+}
 
-    /* old connect
-    int w = places -> w;
-    int h = places -> h;
-    Place *map;
-    map = places -> places;
-    int dx, dy, rnd, poss, i;
-    char visited[h * w];
-    for (dy = 0;dy < h;dy++)
-    for (dx = 0;dx < w;dx++)
-        visited[dy * w + dx] = 0;
-
-    int stack[w * h], s_size = 0;
-    while (x1 != x2 || y1 != y2){
-        poss = 0;
-        for (i = 0;i < 8;i++){
-            if (is_possible(map, visited, w, h, x1, y1, i)) poss = 1;
-        }
-        printf("poss=%i\n", poss);
-        if (!poss){
-            visited[y1 * w + x1] = 1;
-            s_size--;
-            printf("%i\n", s_size);
-            if (s_size < 0) return 1;
-            rnd = stack[s_size];
-            printf("x=%i, y=%i\n", x1, y1);
-            if (rnd > 3) map[y1 * w + x1].flag[rnd - 4] = 0;
-            x1 += rnd_x[rnd];
-            y1 += rnd_y[rnd];
-            if (rnd < 4) map[y1 * w + x1].flag[rnd] = 0;
-            continue;
-        }
-        printf("PROK\n");
-        rnd = random_below(seed, 8);
-        printf("OK\n");
-        dx = rnd_x[rnd];
-        dy = rnd_y[rnd];
-        if (is_possible(map, visited, w, h, x1, y1, rnd)){
-            if (rnd < 4) map[y1 * w + x1].flag[rnd] = 1;
-            stack[s_size] = rnd;
-            printf("ss=%i\n", s_size);
-            s_size++;
-            x1 += dx;
-            y1 += dy;
-            if (rnd > 3) map[y1 * w + x1].flag[rnd - 4] = 1;
+static void click_place(Place *map, int w, int x, int y){
+    int dir, dx, dy;
+    for (dir = 0;dir < 8;dir++){
+        if (map[y * w + x].conn[dir]){
+            dir_diff(dir, &dx, &dy);
+            if (!map[(y + dy) * w + x + dx].polluted){
+                map[(y + dy) * w + x + dx].polluted = 2;
+            }
         }
     }
-    return 0;
-    */
+}
+
+static void pollute_place(Place *map, int w, int x, int y, int dir){
+    map[y * w + x].polluted = 1;
+    int ndir, cnt = 0, ldir;
+    for (ndir = 0;ndir < 8;ndir++){
+        if (ndir + dir != 7 && map[y * w + x].conn[ndir]){
+            ldir = ndir;
+            cnt++;
+        }
+    }
+    int dx, dy;
+    if (cnt == 1){
+        dir_diff(ldir, &dx, &dy);
+        pollute_dir(map, w, x, y, ldir);
+        pollute_place(map, w, x + dx, y + dy, ldir);
+    } else {
+        click_place(map, w, x, y);
+    }
+}
 
 static void pick_rand_normal(Place *map, int *x, int *y, int w, int h, RandomSeed *seed){
     *x = random_below(seed, w);
@@ -149,11 +127,11 @@ static int generate(Places *places, RandomSeed *seed){
     Place *map;
     map = places -> places;
 
+    int i, j, x, y, x2, y2;
     int s_x = random_below(seed, w);
     int s_y = random_below(seed, h);
     map[s_y * w + s_x].type = TYPE_SOURCE;
 
-    int i, j, x, y, x2, y2;
     for (i = 0;i < 10;i++){
         x = s_x;
         y = s_y;
@@ -165,6 +143,16 @@ static int generate(Places *places, RandomSeed *seed){
         }
         map[y2 * w + x2].type = TYPE_PLACE;
     }
+
+    map[s_y * w + s_x].polluted = 1;
+    for (i = 0;i < 8;i++){
+        if (map[s_y * w + s_x].conn[i]){
+            pollute_dir(map, w, s_x, s_y, i);
+            dir_diff(i, &x, &y);
+            pollute_place(map, w, s_x + x, s_y + y, i);
+        }
+    }
+
     return 0;
 }
 
@@ -196,6 +184,7 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
             tmp -> x = CLR_EDGE + PLACE_SIZE / 2 + x * Dx + randrange(seed, -(Dx / 3), Dx / 3);
             tmp -> y = CLR_EDGE + PLACE_SIZE / 2 + y * Dy + randrange(seed, -(Dy / 3), Dy / 3);
         }
+
         (tmp -> rect).x = tmp -> x - PLACE_SIZE / 2;
         (tmp -> rect).y = tmp -> y - PLACE_SIZE / 2;
         (tmp -> rect).w = PLACE_SIZE;
@@ -217,11 +206,14 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
         }
         if (x < w - 1) (tmp -> dir)[0] = f + (w * y) + 1 + x;
         else (tmp -> dir)[0] = NULL;
-        for (i = 0;i < 8;i++){
+        for (i = 0;i < 4;i++){
             tmp -> flag[i] = 0;
         }
         for (i = 0;i < 8;i++){
             tmp -> path[i] = -1;
+        }
+        for (i = 0;i < 8;i++){
+            tmp -> conn[i] = 0;
         }
     }
 
@@ -247,7 +239,8 @@ int blit_places(Places *places, SDL_Renderer *render){
                 255);
         SDL_RenderFillRect(render, &(map[i].rect));
         if (map[i].polluted){
-            SDL_SetRenderDrawColor(render, 0, 0, 0, 50);
+            if (map[i].polluted == 1) SDL_SetRenderDrawColor(render, 0, 0, 0, 100);
+            if (map[i].polluted == 2) SDL_SetRenderDrawColor(render, 0, 0, 255, 100);
             SDL_RenderFillRect(render, &(map[i].brect));
         }
     }
