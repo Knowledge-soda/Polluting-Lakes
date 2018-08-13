@@ -226,8 +226,8 @@ static int invalid_place(int x, int y, int screen_w, int screen_h){
            (y - PLACE_SIZE / 2 < 0) || (y + PLACE_SIZE / 2 > screen_h);
 }
 
-static void finalise(Place *place){
-    int dir, dirs = 0;
+static void finalise(Place *place, RandomSeed *seed){
+    int dir, dir2, dirs = 0;
     for (dir = 0;dir < 8;dir++){
         if (place -> conn[dir]) dirs++;
     }
@@ -235,6 +235,13 @@ static void finalise(Place *place){
         place -> visible = 1;
     } else {
         place -> visible = 0;
+        return;
+    }
+    for (dir = 0;dir < 8;dir++)
+    for (dir2 = 0;dir2 < 8;dir2++){
+        if (place -> conn[dir2] && !random_below(seed, 3)){
+            place -> path[dir] = set_nth_bit(place -> path[dir], dir2);
+        }
     }
 }
 
@@ -265,8 +272,8 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
         tmp -> X = x;
         tmp -> Y = y;
         tmp -> type = TYPE_CROSS;
-        tmp -> x = CLR_EDGE + PLACE_SIZE / 2 + x * Dx ;//+ randrange(seed, -(Dx / 3), Dx / 3);
-        tmp -> y = CLR_EDGE + PLACE_SIZE / 2 + y * Dy ;//+ randrange(seed, -(Dy / 3), Dy / 3);
+        tmp -> x = CLR_EDGE + PLACE_SIZE / 2 + x * Dx + randrange(seed, -(Dx / 3), Dx / 3);
+        tmp -> y = CLR_EDGE + PLACE_SIZE / 2 + y * Dy + randrange(seed, -(Dy / 3), Dy / 3);
         while (invalid_place(tmp -> x, tmp -> y, screen_w, screen_h)){
             tmp -> x = CLR_EDGE + PLACE_SIZE / 2 + x * Dx + randrange(seed, -(Dx / 3), Dx / 3);
             tmp -> y = CLR_EDGE + PLACE_SIZE / 2 + y * Dy + randrange(seed, -(Dy / 3), Dy / 3);
@@ -321,7 +328,7 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
     generate(places, seed);
 
     for (i = 0;i < w * h;i++){
-        finalise(f + i);
+        finalise(f + i, seed);
     }
 
     return 0;
