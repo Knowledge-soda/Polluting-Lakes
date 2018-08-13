@@ -3,11 +3,13 @@
 
 #include<SDL2/SDL.h>
 #include<SDL2/SDL_image.h>
+#include<SDL2/SDL_ttf.h>
 
 #include"misc.h"
 #include"parts.h"
 #include"places.h"
 #include"random.h"
+#include"tools.h"
 
 typedef struct game {
     SDL_Window *window;
@@ -17,6 +19,10 @@ typedef struct game {
     Places *places;
     int screen_w, screen_h;
     RandomSeed *seed;
+    TTF_Font *font;
+    TextBox *init_screen;
+    TextBox *score;
+    TextBox *end_screen;
 } Game;
 
 #endif

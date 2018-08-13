@@ -32,6 +32,7 @@ typedef struct places {
     int history_used, history_size;
     Place *src, *dst;
     Place *places;
+    int score;
 } Places;
 
 int init_places(Places *places, int w, int h, int screen_w, int screen_h, RandomSeed *seed);

@@ -1,5 +1,4 @@
-CFLSGS = -I/usr/local/include/SDL2
-LDFLAGS = `sdl2-config --libs` -lSDL2_image
+LDFLAGS = `sdl2-config --libs` -lSDL2_image -lSDL2_ttf
 ALL_OBJS = tools.o parts.o places.o random.o SFMT.o outer.o main.o game.o
 game: $(ALL_OBJS)
 	$(CC) -Wall $(LDFLAGS) -o game $(ALL_OBJS)

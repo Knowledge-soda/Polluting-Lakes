@@ -242,6 +242,7 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
     places -> history = malloc(sizeof(Action) * 200);
     places -> history_size = 200;
     places -> history_used = 0;
+    places -> score = 0;
 
     for (y = h - 1;y >= 0;y--)
     for (x = w - 1;x >= 0;x--){
@@ -405,6 +406,7 @@ int blit_places(Places *places, SDL_Renderer *render){
     w = places -> w;
     h = places -> h;
 
+    places -> score = 0;
     for (i = 0;i < w * h;i++){
         SDL_SetRenderDrawColor(render,
                 places_reds[map[i].type],
@@ -419,6 +421,7 @@ int blit_places(Places *places, SDL_Renderer *render){
             else if (map[i].polluted == 1) SDL_SetRenderDrawColor(render, 0, 0, 0, 100);
             SDL_RenderFillRect(render, &(map[i].brect));
         }
+        if (map[i].type == TYPE_PLACE && map[i].polluted) (places -> score)++;
     }
 
     int j;
