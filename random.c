@@ -4,9 +4,12 @@
 
 #include"random.h"
 
+#define DBG_SEED (1534173957)
+
 void init_random(RandomSeed *seed){
     time_t t;
-    sfmt_init_gen_rand(&(seed -> sfmt), (uint32_t)time(&t));
+    // sfmt_init_gen_rand(&(seed -> sfmt), (uint32_t)time(&t));
+    sfmt_init_gen_rand(&(seed -> sfmt), DBG_SEED);
     seed -> array = malloc(4000);
     sfmt_fill_array32(&(seed -> sfmt), seed -> array, 1000);
     seed -> used = 0;

@@ -4,6 +4,8 @@
 #include"misc.h"
 #include"random.h"
 
+typedef unsigned char byte;
+
 typedef struct place {
     SDL_Rect rect, brect;
     int x, y;
@@ -12,14 +14,21 @@ typedef struct place {
     struct place *dir[8];
     char flag[4];
     char conn[8];
-    char path[8];
+    byte path[8];
     char polluted;
     char selected;
     char comes_from;
 } Place;
 
+typedef struct action {
+    int x, y, dir;
+} Action;
+
 typedef struct places {
     int w, h;
+    int ready;
+    Action *history;
+    int history_used, history_size;
     Place *src, *dst;
     Place *places;
 } Places;

@@ -20,6 +20,14 @@ int places_reds[]   = {0,  0,255};
 int places_greens[] = {255,0,0};
 int places_blues[]  = {0,  0,0};
 
+static byte set_nth_bit(byte b, int n){
+    return b | 1 << n;
+}
+
+static int get_nth_bit(byte b, int n){
+    return (b >> n) & 1;
+}
+
 static int diff_dir(int dx, int dy){
     dx++;
     dy++;
@@ -62,7 +70,7 @@ static int connect(Place *src, Place *dst, RandomSeed *seed){
         }
         src -> conn[dir] = 1;
 
-        if (oldir >= 0) src -> path[oldir] = dir;
+        if (oldir >= 0) src -> path[oldir] = set_nth_bit(src -> path[oldir], dir);
 
         src = src -> dir[dir];
         src -> conn[diff_dir(-dx, -dy)] = 1;
@@ -83,16 +91,21 @@ static void pollute_dir(Place *place, int dir){
     }
 }
 
-static void click_place(Place *place){
+static int click_place(Place *place, char comes_from){
     int dir;
-    place -> selected = SELECTED_SRC;
+    byte chs;
+    place -> selected = SELECTED_DST;
+    chs = place -> path[comes_from];
     for (dir = 0;dir < 8;dir++){
-        if (place -> conn[dir]){
-            if (!place -> dir[dir] -> polluted){
-                place -> dir[dir] -> selected = SELECTED_POS;
-            }
+        if (get_nth_bit(chs, dir)){
+            place -> dir[dir] -> selected = SELECTED_POS;
         }
     }
+    return (comes_from == place -> comes_from);
+    /*
+    if (place -> comes_from >= 0 && place -> path[place -> comes_from] >= 0)
+        place -> dir[place -> path[place -> comes_from]] -> selected = SELECTED_POS;
+        */
 }
 
 static void declick_place(Place *place){
@@ -116,6 +129,7 @@ static int calc_free_dirs(Place *map, int xy){
 }
 
 static void pollute_place(Place *place, int dir){
+    place -> dir[7 - dir] -> comes_from = -1;
     place -> comes_from = dir;
     place -> polluted = 1;
     int ndir, cnt = 0, ldir;
@@ -186,6 +200,7 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
     }
     Place *f = places -> places;
     Place *tmp;
+    places -> ready = 0;
 
     for (y = h - 1;y >= 0;y--)
     for (x = w - 1;x >= 0;x--){
@@ -240,7 +255,7 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
             tmp -> flag[i] = 0;
         }
         for (i = 0;i < 8;i++){
-            tmp -> path[i] = -1;
+            tmp -> path[i] = 0;
         }
         for (i = 0;i < 8;i++){
             tmp -> conn[i] = 0;
@@ -281,22 +296,33 @@ int click(Places *places, int x, int y, SDL_Renderer *render){
 
     Place *will_declick = NULL;
     if (inr){
-        if (places -> src){
+        if (places -> src && places -> dst){
             will_declick = places -> src;
-            if (map[i].selected == SELECTED_POS && places -> src -> polluted){
-                dir = places_dir(places -> src, map + i);
-                pollute_dir(places -> src, dir);
+            if (map[i].selected == SELECTED_POS && places -> ready){
+                dir = places_dir(places -> dst, map + i);
+                pollute_dir(places -> dst, dir);
                 pollute_place(map + i, dir);
+                places -> ready = 0;
             } else {
                 places -> src = map + i;
-                click_place(map + i);
+                map[i].selected = SELECTED_SRC;
+                declick_place(places -> dst);
+                places -> dst = NULL;
+            }
+        } else if (places -> src){
+            dir = places_dir(places -> src, map + i);
+            if (dir >= 0){
+                places -> dst = map + i;
+                map[i].selected = SELECTED_SRC;
+                places -> ready = click_place(map + i, dir);
             }
         } else {
             places -> src = map + i;
-            click_place(map + i);
+            map[i].selected = SELECTED_SRC;
         }
     } else {
-        if (places -> src) declick_place(places -> src);
+        if (places -> dst) declick_place(places -> dst);
+        if (places -> src) places -> src -> selected = NOT_SELECTED;
         places -> src = NULL;
         places -> dst = NULL;
     }
@@ -321,7 +347,8 @@ int blit_places(Places *places, SDL_Renderer *render){
                 255);
         SDL_RenderFillRect(render, &(map[i].rect));
         if (map[i].polluted || map[i].selected){
-            if (map[i].selected == SELECTED_SRC) SDL_SetRenderDrawColor(render, 0, 0, 150, 150);
+            if (map[i].selected == SELECTED_SRC) SDL_SetRenderDrawColor(render, 150, 0, 0, 150);
+            else if (map[i].selected == SELECTED_DST) SDL_SetRenderDrawColor(render, 150, 150, 0, 150);
             else if (map[i].selected == SELECTED_POS) SDL_SetRenderDrawColor(render, 0, 0, 255, 100);
             else if (map[i].polluted == 1) SDL_SetRenderDrawColor(render, 0, 0, 0, 100);
             SDL_RenderFillRect(render, &(map[i].brect));
