@@ -432,12 +432,16 @@ int blit_places(Places *places, SDL_Renderer *render){
     places -> score = 0;
     for (i = 0;i < w * h;i++){
         if (!map[i].visible) continue;
-        SDL_SetRenderDrawColor(render,
-                places_reds[map[i].type],
-                places_greens[map[i].type],
-                places_blues[map[i].type],
-                255);
-        SDL_RenderFillRect(render, &(map[i].rect));
+        if (map[i].type == TYPE_PLACE){
+            SDL_RenderCopy(render, places -> lake, NULL, &(map[i].rect));
+        } else {
+            SDL_SetRenderDrawColor(render,
+                    places_reds[map[i].type],
+                    places_greens[map[i].type],
+                    places_blues[map[i].type],
+                    255);
+            SDL_RenderFillRect(render, &(map[i].rect));
+        }
         if (map[i].polluted || map[i].selected){
             if (map[i].selected == SELECTED_SRC) SDL_SetRenderDrawColor(render, 150, 0, 0, 150);
             else if (map[i].selected == SELECTED_DST) SDL_SetRenderDrawColor(render, 150, 150, 0, 150);

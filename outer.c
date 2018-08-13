@@ -36,6 +36,8 @@ int init(Game *game){
     game -> places = malloc(sizeof(Places) * 25);
     init_places(game -> places, 14, 10, game -> screen_w, game -> screen_h, game -> seed);
 
+    game -> places -> lake = load_texture("sprite1.png", game -> render);
+
     return 0;
 }
 

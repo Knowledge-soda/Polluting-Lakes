@@ -11,6 +11,7 @@ typedef struct text_box {
     SDL_Rect rect;
 } TextBox;
 
+SDL_Texture *load_texture(char *path, SDL_Renderer *render);
 TextBox *init_text_box(TTF_Font *font, SDL_Renderer *render, int r, int g, int b);
 void render_text_box(TextBox *target, char *text);
 void blit(TextBox *dst, int x, int y);

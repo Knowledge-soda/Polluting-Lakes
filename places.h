@@ -33,6 +33,7 @@ typedef struct places {
     int history_used, history_size;
     Place *src, *dst;
     Place *places;
+    SDL_Texture *lake;
     int score;
 } Places;
 

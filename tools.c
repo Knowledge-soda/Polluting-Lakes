@@ -4,7 +4,7 @@
 #include"tools.h"
 #include"game.h"
 
-SDL_Texture *load_texture(char *path, Game *game){
+SDL_Texture *load_texture(char *path, SDL_Renderer *render){
     SDL_Texture *ret = NULL;
     SDL_Surface *surface;
     surface = IMG_Load(path);
@@ -12,7 +12,7 @@ SDL_Texture *load_texture(char *path, Game *game){
         fprintf(stderr, "Image %s could not be loaded! Error: %s!\n", path, IMG_GetError());
         return NULL;
     }
-    ret = SDL_CreateTextureFromSurface(game -> render, surface);
+    ret = SDL_CreateTextureFromSurface(render, surface);
     if (!ret){
         fprintf(stderr, "Texture %s could not be created! Error: %s!\n", path, SDL_GetError());
     }
