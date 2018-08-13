@@ -91,6 +91,26 @@ static void pollute_dir(Place *place, int dir){
     }
 }
 
+static void unpollute_dir(Place *place, int dir){
+    int dx, dy;
+    dir_diff(dir, &dx, &dy);
+    if (dir > 3){
+        place -> flag[dir - 4] = 1;
+    } else {
+        place -> dir[dir] -> flag[3 - dir] = 1;
+    }
+}
+
+static int dir_polluted(Place *place, int dir){
+    int dx, dy;
+    dir_diff(dir, &dx, &dy);
+    if (dir > 3){
+        return place -> flag[dir - 4] == 2;
+    } else {
+        return place -> dir[dir] -> flag[3 - dir] == 2;
+    }
+}
+
 static int click_place(Place *place, char comes_from){
     int dir;
     byte chs;
@@ -143,6 +163,24 @@ static void pollute_place(Place *place, int dir){
         pollute_dir(place, ldir);
         pollute_place(place -> dir[ldir], ldir);
     }
+}
+
+static void unpollute_place(Place *place, int dir){
+    place -> comes_from = -1;
+    int ndir, cnt = 0, ldir, cnt_pol = 0;
+    for (ndir = 0;ndir < 8;ndir++){
+        if (ndir + dir != 7 && place -> conn[ndir]){
+            ldir = ndir;
+            cnt++;
+            if (dir_polluted(place, ndir)) cnt_pol++;
+        }
+    }
+    if (cnt == 1){
+        place -> polluted = 0;
+        unpollute_dir(place, ldir);
+        unpollute_place(place -> dir[ldir], ldir);
+    }
+    if (!cnt_pol) place -> polluted = 0;
 }
 
 static void pick_rand_normal(Place *map, int *xy, int size, RandomSeed *seed){
@@ -201,6 +239,9 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
     Place *f = places -> places;
     Place *tmp;
     places -> ready = 0;
+    places -> history = malloc(sizeof(Action) * 200);
+    places -> history_size = 200;
+    places -> history_used = 0;
 
     for (y = h - 1;y >= 0;y--)
     for (x = w - 1;x >= 0;x--){
@@ -269,6 +310,30 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
     return 0;
 }
 
+void undo(Places *places){
+    if (!places -> history_used) return;
+    char dir, comes_from;
+    Place *place;
+    (places -> history_used)--;
+    dir = (places -> history)[places -> history_used].dir;
+    comes_from = (places -> history)[places -> history_used].comes_from;
+    place = (places -> history)[places -> history_used].place;
+    unpollute_dir(place, 7 - dir);
+    unpollute_place(place, dir);
+    place -> dir[7 - dir] -> comes_from = comes_from;
+}
+
+static void append_history(Places *places, Place *place, char dir, char comes_from){
+    if (places -> history_used == places -> history_size){
+        (places -> history_size) *= 2;
+        places -> history = realloc(places -> history, places -> history_size);
+    }
+    (places -> history)[places -> history_used].place = place;
+    (places -> history)[places -> history_used].dir = dir;
+    (places -> history)[places -> history_used].comes_from = comes_from;
+    (places -> history_used)++;
+}
+
 static int places_dir(Place *src, Place *dst){
     int ret;
     for (ret = 0;ret < 8;ret++){
@@ -300,6 +365,7 @@ int click(Places *places, int x, int y, SDL_Renderer *render){
             will_declick = places -> src;
             if (map[i].selected == SELECTED_POS && places -> ready){
                 dir = places_dir(places -> dst, map + i);
+                append_history(places, map + i, dir, places -> dst -> comes_from);
                 pollute_dir(places -> dst, dir);
                 pollute_place(map + i, dir);
                 places -> ready = 0;

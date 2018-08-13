@@ -21,7 +21,8 @@ typedef struct place {
 } Place;
 
 typedef struct action {
-    int x, y, dir;
+    char dir, comes_from;
+    Place *place;
 } Action;
 
 typedef struct places {
@@ -36,5 +37,6 @@ typedef struct places {
 int init_places(Places *places, int w, int h, int screen_w, int screen_h, RandomSeed *seed);
 int click(Places *places, int x, int y, SDL_Renderer *render);
 int blit_places(Places *places, SDL_Renderer *render);
+void undo(Places *places);
 
 #endif

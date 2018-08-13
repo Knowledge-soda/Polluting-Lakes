@@ -15,6 +15,10 @@ int loop(Game *game){
                 if (event.button.button == SDL_BUTTON_LEFT){
                     click(game -> places, event.button.x, event.button.y, game -> render);
                 }
+            } else if (event.type == SDL_KEYDOWN){
+                if (event.key.keysym.sym == SDLK_u){
+                    undo(game -> places);
+                }
             }
         }
 
