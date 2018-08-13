@@ -18,6 +18,7 @@ typedef struct place {
     char polluted;
     char selected;
     char comes_from;
+    char visible;
 } Place;
 
 typedef struct action {

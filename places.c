@@ -226,6 +226,18 @@ static int invalid_place(int x, int y, int screen_w, int screen_h){
            (y - PLACE_SIZE / 2 < 0) || (y + PLACE_SIZE / 2 > screen_h);
 }
 
+static void finalise(Place *place){
+    int dir, dirs = 0;
+    for (dir = 0;dir < 8;dir++){
+        if (place -> conn[dir]) dirs++;
+    }
+    if (dirs){
+        place -> visible = 1;
+    } else {
+        place -> visible = 0;
+    }
+}
+
 int init_places(Places *places, int w, int h, int screen_w, int screen_h, RandomSeed *seed){
     int Dx = (screen_w - CLR_EDGE * 2 - PLACE_SIZE) / (w - 1);
     int Dy = (screen_h - CLR_EDGE * 2 - PLACE_SIZE) / (h - 1);
@@ -307,6 +319,10 @@ int init_places(Places *places, int w, int h, int screen_w, int screen_h, Random
     places -> dst = NULL;
 
     generate(places, seed);
+
+    for (i = 0;i < w * h;i++){
+        finalise(f + i);
+    }
 
     return 0;
 }
@@ -408,6 +424,7 @@ int blit_places(Places *places, SDL_Renderer *render){
 
     places -> score = 0;
     for (i = 0;i < w * h;i++){
+        if (!map[i].visible) continue;
         SDL_SetRenderDrawColor(render,
                 places_reds[map[i].type],
                 places_greens[map[i].type],
